@@ -1,0 +1,210 @@
+# Switch (github.com/sandbox-quantum/switch) from its official GHCR images, trimmed from its
+# deploy/local/standalone-docker-compose.yml: Postgres, switch-core (API :18000), the gateway
+# dashboard (:13000), a Cloudflare tunnel for chat webhooks, an agent controller that runs
+# Claude Code and Codex agents, a server for the sites they publish, and the video crew's back end
+# (studio, and the renderer it sends scenes to). Every value comes from the root .env, written by
+# `mise run switch:init-env`.
+name: launch-room
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5433}:5432"
+    environment:
+      POSTGRES_USER: ${DB_OWNER_USER}
+      POSTGRES_PASSWORD: ${DB_OWNER_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+      # The unprivileged role switch-core connects as, created by postgres/init on first start.
+      APP_DB_USER: ${DB_USER}
+      APP_DB_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_OWNER_USER}"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+
+  switch:
+    image: ghcr.io/sandbox-quantum/switch-core:${SWITCH_VERSION:?set it in .env}
+    ports:
+      - "127.0.0.1:${API_HOST_PORT:-18000}:8000"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_OWNER_USER: ${DB_OWNER_USER}
+      DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      ID_SERVER_NAME: localhost
+      MATRIX_SERVER_NAME: localhost
+      AGENT_REGISTRATION_TOKEN: ${AGENT_REGISTRATION_TOKEN}
+      SECRET_KEYS: ${SECRET_KEYS:?set it in .env}
+      GATEWAY_COOKIE_SECURE: "false"
+      GATEWAY_ADMIN_EMAIL: ${GATEWAY_ADMIN_EMAIL}
+      GATEWAY_ADMIN_PASSWORD: ${GATEWAY_ADMIN_PASSWORD}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL}
+      # The public HTTPS URL (the Cloudflare tunnel's hostname) chat platforms deliver webhooks to.
+      MESSAGING_PUBLIC_URL: ${MESSAGING_PUBLIC_URL:-}
+      # Machines that run agents (the agent-controller below), enrolled from the Machines page,
+      # whose "Add machine" command names this public URL.
+      FEATURE_FLAGS_ENABLED: agent_management
+      CONTROLLER_TOKEN_SECRET: ${CONTROLLER_TOKEN_SECRET:?set it in .env}
+      GATEWAY_PUBLIC_URL: ${MESSAGING_PUBLIC_URL:-}
+      # Chat platforms: fill in .env for the ones you connect.
+      SLACK_APP_CLIENT_ID: ${SLACK_APP_CLIENT_ID:-}
+      SLACK_APP_CLIENT_SECRET: ${SLACK_APP_CLIENT_SECRET:-}
+      SLACK_APP_SIGNING_SECRET: ${SLACK_APP_SIGNING_SECRET:-}
+      DISCORD_APP_CLIENT_ID: ${DISCORD_APP_CLIENT_ID:-}
+      DISCORD_APP_CLIENT_SECRET: ${DISCORD_APP_CLIENT_SECRET:-}
+      DISCORD_APP_BOT_TOKEN: ${DISCORD_APP_BOT_TOKEN:-}
+      DISCORD_APP_APPLICATION_ID: ${DISCORD_APP_APPLICATION_ID:-}
+      TEAMS_APP_CLIENT_ID: ${TEAMS_APP_CLIENT_ID:-}
+      TEAMS_APP_TENANT_ID: ${TEAMS_APP_TENANT_ID:-}
+      TEAMS_APP_CLIENT_SECRET: ${TEAMS_APP_CLIENT_SECRET:-}
+      TELEGRAM_APP_BOT_TOKEN: ${TELEGRAM_APP_BOT_TOKEN:-}
+      TELEGRAM_APP_WEBHOOK_SECRET: ${TELEGRAM_APP_WEBHOOK_SECRET:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  gateway:
+    image: ghcr.io/sandbox-quantum/gateway:${SWITCH_VERSION:?set it in .env}
+    ports:
+      - "127.0.0.1:${GATEWAY_HOST_PORT:-13000}:3000"
+    depends_on:
+      - switch
+
+  # Cloudflare tunnel created in the dashboard (Zero Trust > Networks > Tunnels). Point its public
+  # hostname at http://switch:8000 and set that hostname as MESSAGING_PUBLIC_URL.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set it in .env (the token of the dashboard tunnel)}
+    restart: unless-stopped
+    depends_on:
+      - switch
+
+  # Runs the agents Switch places on this machine (Claude Code, Codex), in place of Switch Console. It
+  # enrolls once with SWITCH_CONTROLLER_ENROLL_CODE and must reach Switch over https, so it goes
+  # through the tunnel's public URL.
+  agent-controller:
+    build:
+      context: ..
+      dockerfile: docker/agent-controller/Dockerfile
+    image: launch-room-agent-controller:0.31.0
+    environment:
+      SWITCH_SERVER_URL: ${MESSAGING_PUBLIC_URL:?set it in .env}
+      SWITCH_CONTROLLER_ENROLL_CODE: ${SWITCH_CONTROLLER_ENROLL_CODE:-}
+      SWITCH_CONTROLLER_NAME: docker
+      CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # The launch-room workflow: the templates new sites start from (the repo's templates/), and
+      # the domain sites are served on.
+      SITE_TEMPLATES: ${SITE_TEMPLATES:-/home/node/templates}
+      SITES_DOMAIN: ${SITES_DOMAIN:-}
+      # The Formspree CLI project the sites' signup forms are deployed to.
+      FORMSPREE_PROJECT_ID: ${FORMSPREE_PROJECT_ID:-}
+      FORMSPREE_DEPLOY_KEY: ${FORMSPREE_DEPLOY_KEY:-}
+      # The video crew's back end, reached by the agents' `video` command.
+      STUDIO_URL: http://studio:8090
+    volumes:
+      - ../templates:/home/node/templates:ro
+      - controller-state:/home/node/.local/state
+      - agent-workspaces:/home/node/.switch
+      - claude-home:/home/node/.claude
+      - codex-home:/home/node/.codex
+      - site-sources:/home/node/sites
+      - sites-public:/home/node/public
+      - video-projects:/home/node/videos
+    restart: on-failure
+    depends_on:
+      - switch
+      - cloudflared
+
+  # Serves the sites the agents publish: preview-<name>.<domain> and <name>.<domain>. Route the
+  # tunnel's wildcard hostname *.<domain> to http://workflows:80.
+  workflows:
+    image: caddy:2-alpine
+    volumes:
+      - ./workflows/Caddyfile:/etc/caddy/Caddyfile:ro
+      - sites-public:/srv/sites:ro
+    restart: unless-stopped
+    # Started after the controller, so the controller creates sites-public owned by its own user.
+    depends_on:
+      - agent-controller
+
+  # The video crew's back end (cmd/studio): it has the explainer scenes rendered by their engine
+  # (stage for .js scenes, renderer for .py ones), joins them with their subtitles, grades and mixes the cut, and measures it. Only the agents'
+  # `video` command talks to it, inside the stack.
+  studio:
+    build:
+      context: ..
+      dockerfile: docker/studio/Dockerfile
+    image: launch-room-studio:dev
+    environment:
+      RENDERER_URL: http://renderer:8091
+      STAGE_URL: http://stage:8092
+    volumes:
+      - studio-data:/data
+    restart: unless-stopped
+    depends_on:
+      - renderer
+      - stage
+
+  # Renders .js explainer scenes (cmd/renderer with RENDERER_ENGINE=stage): anime.js motion graphics
+  # captured frame by frame in headless Chromium (docker/stage/runtime), narrated with Edge's free
+  # voices. Like the renderer, it runs agent-written code, so it gets no keys and no volumes.
+  stage:
+    build:
+      context: ..
+      dockerfile: docker/stage/Dockerfile
+    image: launch-room-stage:dev
+    environment:
+      LAUNCHROOM_VOICE: ${EXPLAINER_VOICE:-en-US-AndrewNeural}
+    read_only: true
+    tmpfs:
+      - /tmp:size=3g,uid=1001,gid=1001
+    shm_size: 1g
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 512
+    mem_limit: 4g
+    cpus: 4
+    restart: unless-stopped
+
+  # Renders .py explainer scenes (cmd/renderer): Manim Community with the launchroom scene library, and
+  # narration from Microsoft Edge's free voices. The scenes are Python the agents wrote, so this
+  # container gets no keys, no volumes and limited resources; only studio talks to it.
+  renderer:
+    build:
+      context: ..
+      dockerfile: docker/renderer/Dockerfile
+    image: launch-room-renderer:dev
+    environment:
+      LAUNCHROOM_VOICE: ${EXPLAINER_VOICE:-en-US-AndrewNeural}
+    read_only: true
+    tmpfs:
+      - /tmp:size=2g,uid=1000,gid=1000
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 256
+    mem_limit: 4g
+    cpus: 4
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  controller-state:
+  agent-workspaces:
+  claude-home:
+  codex-home:
+  site-sources:
+  sites-public:
+  video-projects:
+  studio-data:

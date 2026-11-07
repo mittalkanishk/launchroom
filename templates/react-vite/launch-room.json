@@ -1,0 +1,4 @@
+{
+  "description": "Interactive one-page product sites: waitlists, launch pages, calculators, demos (React + Vite)",
+  "buildDir": "dist"
+}

@@ -1,0 +1,4 @@
+{
+  "description": "Multi-page content sites: company sites, blogs, changelogs, case studies; pages in Markdown (Astro)",
+  "buildDir": "dist"
+}

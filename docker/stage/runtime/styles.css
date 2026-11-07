@@ -1,0 +1,53 @@
+/* Style packs: a scene picks one with scene({ style }). Every shot reads only these variables. */
+[data-style="aurora"] {
+  --bg: #060a17; --bg2: #0d1430; --ink: #eef2ff; --muted: #8d96b8;
+  --accent: #5ee7f7; --accent2: #a78bfa; --accent3: #f472b6;
+  --glass: rgba(255,255,255,.055); --glass-edge: rgba(255,255,255,.12); --shadow: rgba(0,0,0,.55);
+  --font: "Inter", "Noto Sans", sans-serif; --mono: "JetBrains Mono", "Noto Sans Mono", monospace;
+}
+[data-style="ember"] {
+  --bg: #110908; --bg2: #2a1210; --ink: #fff4ec; --muted: #c09a8c;
+  --accent: #ff7a45; --accent2: #ffc24b; --accent3: #ff4d6d;
+  --glass: rgba(255,255,255,.05); --glass-edge: rgba(255,200,170,.16); --shadow: rgba(0,0,0,.6);
+  --font: "Inter", "Noto Sans", sans-serif; --mono: "JetBrains Mono", "Noto Sans Mono", monospace;
+}
+[data-style="paper"] {
+  --bg: #f4f0e8; --bg2: #e8e1d3; --ink: #17171c; --muted: #6b6a73;
+  --accent: #2f5bff; --accent2: #ff5c8a; --accent3: #10b981;
+  --glass: rgba(255,255,255,.7); --glass-edge: rgba(23,23,28,.12); --shadow: rgba(40,30,10,.18);
+  --font: "Inter", "Noto Sans", sans-serif; --mono: "JetBrains Mono", "Noto Sans Mono", monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+#frame {
+  position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0;
+  background: radial-gradient(120% 90% at 50% 0%, var(--bg2), var(--bg) 70%);
+  color: var(--ink); font-family: var(--font); overflow: hidden;
+  -webkit-font-smoothing: antialiased; text-rendering: geometricPrecision;
+}
+
+/* Backdrop: soft colour orbs, a perspective grid floor, a vignette. Moved by stage.js. */
+#backdrop, #shots, #grain, .shot { position: absolute; inset: 0; }
+.orb { position: absolute; width: 1100px; height: 1100px; border-radius: 50%; opacity: .55; }
+.orb-a { background: radial-gradient(circle, color-mix(in srgb, var(--accent) 55%, transparent), transparent 62%); left: -300px; top: -350px; }
+.orb-b { background: radial-gradient(circle, color-mix(in srgb, var(--accent2) 50%, transparent), transparent 62%); right: -350px; top: 50px; }
+.orb-c { background: radial-gradient(circle, color-mix(in srgb, var(--accent3) 35%, transparent), transparent 62%); left: 500px; bottom: -650px; }
+#floor { position: absolute; left: -50%; right: -50%; bottom: -120px; height: 620px; perspective: 700px; overflow: hidden;
+  mask-image: linear-gradient(to top, rgba(0,0,0,.9), transparent 85%); }
+#grid { position: absolute; inset: -400px 0 0 0; transform: rotateX(68deg); transform-origin: 50% 100%;
+  background-image: linear-gradient(var(--glass-edge) 1px, transparent 1px), linear-gradient(90deg, var(--glass-edge) 1px, transparent 1px);
+  background-size: 90px 90px; }
+#vignette { position: absolute; inset: 0; background: radial-gradient(130% 100% at 50% 45%, transparent 55%, var(--shadow)); }
+#grain { pointer-events: none; opacity: .07; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+
+/* Shared pieces the shots build with. */
+.shot { display: grid; place-items: center; opacity: 0; }
+.glass { background: var(--glass); border: 1px solid var(--glass-edge); border-radius: 28px;
+  box-shadow: 0 30px 80px -20px var(--shadow), inset 0 1px 0 rgba(255,255,255,.08); }
+.eyebrow { font-size: 26px; letter-spacing: .32em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+.accent { color: var(--accent); }
+.grad { background: linear-gradient(100deg, var(--accent), var(--accent2) 60%, var(--accent3)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.char, .word { display: inline-block; will-change: transform, opacity; }
+.mono { font-family: var(--mono); }

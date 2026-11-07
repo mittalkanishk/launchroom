@@ -1,0 +1,25 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../layouts/Base.astro';
+
+const latest = (await getCollection('blog'))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+  .slice(0, 3);
+---
+
+<Base title="Your site">
+  <h1>Your site</h1>
+  <p>Blank template — say what you do in a sentence or two.</p>
+
+  <h2>Latest posts</h2>
+  <ul class="post-list">
+    {
+      latest.map((post) => (
+        <li>
+          <a href={`/blog/${post.id}/`}>{post.data.title}</a>
+          <div class="post-date">{post.data.date.toDateString()}</div>
+        </li>
+      ))
+    }
+  </ul>
+</Base>

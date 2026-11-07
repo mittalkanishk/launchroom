@@ -1,0 +1,4 @@
+{
+  "description": "Product docs and help centers: sidebar, built-in search, dark mode; pages in Markdown (Astro Starlight)",
+  "buildDir": "dist"
+}

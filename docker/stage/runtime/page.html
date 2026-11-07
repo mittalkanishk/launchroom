@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="/styles.css">
+<script type="importmap">{ "imports": { "animejs": "/anime.js", "stage": "/stage.js" } }</script>
+</head>
+<body>
+  <!-- The frame is always 1920x1080 and is scaled to the render size, so shots lay out once. -->
+  <div id="frame">
+    <div id="backdrop">
+      <div class="orb orb-a"></div><div class="orb orb-b"></div><div class="orb orb-c"></div>
+      <div id="floor"><div id="grid"></div></div>
+      <div id="vignette"></div>
+    </div>
+    <div id="shots"></div>
+    <div id="grain"></div>
+  </div>
+  <script type="module" src="/stage.js"></script>
+</body>
+</html>

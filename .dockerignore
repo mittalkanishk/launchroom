@@ -1,0 +1,5 @@
+# The controller image is built from the repo root; keep secrets and bulky folders out of the context.
+.env
+**/node_modules/
+**/dist/
+templates/

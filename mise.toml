@@ -1,0 +1,11 @@
+[tasks."switch:init-env"]
+description = "Write .env for the Switch stack with fresh local secrets (refuses if .env exists)"
+file = ".mise/scripts/switch-init-env.sh"
+
+[tasks."switch:up"]
+description = "Start the stack (Switch, tunnel, agent controller, sites), rebuilding the controller if its code changed"
+file = ".mise/scripts/switch-up.sh"
+
+[tasks."switch:down"]
+description = "Stop the Switch stack (keeps the database volume)"
+file = ".mise/scripts/switch-down.sh"

@@ -1,0 +1,5 @@
+{
+  "description": "Pitch decks and talks as a shareable link plus an editable PowerPoint; slides in Markdown (Slidev)",
+  "buildDir": "dist",
+  "deck": "slides.md"
+}

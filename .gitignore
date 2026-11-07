@@ -1,0 +1,8 @@
+# Secrets: the stack's passwords, tokens and keys. .env.example is the template to commit.
+.env
+
+# Installed and built by the site template's tooling.
+node_modules/
+dist/
+
+.DS_Store

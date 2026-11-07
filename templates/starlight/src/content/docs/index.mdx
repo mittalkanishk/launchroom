@@ -1,0 +1,22 @@
+---
+title: Your docs
+description: Documentation for your product.
+template: splash # Remove this line to show the sidebar on this page.
+hero:
+  tagline: Blank template — say what your product does and who these docs are for.
+  actions:
+    - text: Get started
+      link: /guides/getting-started/
+      icon: right-arrow
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid>
+	<Card title="Guides" icon="open-book">
+		Step-by-step walkthroughs, starting with [Getting started](/guides/getting-started/).
+	</Card>
+	<Card title="Reference" icon="document">
+		Every option and endpoint, in [the reference](/reference/overview/).
+	</Card>
+</CardGrid>
