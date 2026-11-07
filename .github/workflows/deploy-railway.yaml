@@ -1,0 +1,101 @@
+name: Deploy to Railway
+
+# Runs directly off the `Release` workflow (which builds & pushes `agent-controller-<VERSION>`,
+# `studio-<VERSION>`, `stage-<VERSION>` and `renderer-<VERSION>` images) or via manual
+# `workflow_dispatch` for re-deploys.
+#
+# Pipeline (per run):
+#   setup  -> resolve VERSION once
+#   deploy -> per service, update the Railway service to kanishkmittal55/launchroom:<service>-<VERSION>
+#             and serviceInstanceDeploy (fresh deployment from updated image source). A service
+#             whose RAILWAY_*_SERVICE_ID secret is unset is skipped.
+#
+# The bash for each step lives under .github/workflows/scripts/ (one file per concern).
+#
+# Required secrets (Settings → Secrets and variables → Actions):
+#   RAILWAY_PROJECT_TOKEN   (or RAILWAY_TOKEN) for the deploy jobs
+#   RAILWAY_ENVIRONMENT_ID  Railway target env
+#   RAILWAY_AGENT_CONTROLLER_SERVICE_ID  Optional; Railway service id for agent-controller.
+#   RAILWAY_STUDIO_SERVICE_ID            Optional; Railway service id for studio.
+#   RAILWAY_STAGE_SERVICE_ID             Optional; Railway service id for stage.
+#   RAILWAY_RENDERER_SERVICE_ID          Optional; Railway service id for renderer.
+#   If the image repo is private, give Railway the Docker Hub credentials under each
+#   service's Settings → Source.
+
+on:
+  workflow_run:
+    workflows: ["Release"]
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to deploy (e.g., v0.1.0) — must match published kanishkmittal55/launchroom images for that tag'
+        required: true
+        type: string
+
+concurrency:
+  group: 'deploy-railway'
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  # Resolve the VERSION ONCE so all deploy jobs agree on the same tag.
+  setup:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout repository (full, for git describe fallback)
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Determine version
+        id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          WORKFLOW_RUN_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: bash .github/workflows/scripts/resolve-version.sh
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [setup]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: agent-controller
+            service_id_secret: RAILWAY_AGENT_CONTROLLER_SERVICE_ID
+          - service: studio
+            service_id_secret: RAILWAY_STUDIO_SERVICE_ID
+          - service: stage
+            service_id_secret: RAILWAY_STAGE_SERVICE_ID
+          - service: renderer
+            service_id_secret: RAILWAY_RENDERER_SERVICE_ID
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      RAILWAY_PROJECT_TOKEN: ${{ secrets.RAILWAY_PROJECT_TOKEN }}
+      RAILWAY_ENVIRONMENT_ID: ${{ secrets.RAILWAY_ENVIRONMENT_ID }}
+      RAILWAY_SERVICE_ID: ${{ secrets[matrix.service_id_secret] }}
+      IMAGE_REPO: kanishkmittal55/launchroom
+      IMAGE_TAG_PREFIX: ${{ matrix.service }}
+      VERSION: ${{ needs.setup.outputs.version }}
+    steps:
+      - name: Checkout scripts
+        if: ${{ env.RAILWAY_SERVICE_ID != '' }}
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          sparse-checkout: .github/workflows/scripts
+          sparse-checkout-cone-mode: false
+
+      - name: Update Railway ${{ matrix.service }} service image and deploy
+        if: ${{ env.RAILWAY_SERVICE_ID != '' }}
+        run: bash .github/workflows/scripts/railway-deploy.sh
