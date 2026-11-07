@@ -22,7 +22,7 @@ editor    ┌ Approval needed: video publish switch-in-the-room ┐  [Allow once
 Launch Room is deployed on Railway and running now.
 
 - **Dashboard:** https://gateway-production-776f.up.railway.app
-- **Judge login:** `judge@switchai.com` / `judge123`
+- **Judge login:** `judge@switchai.com` / `judge1234`
 
 The machine `railway` runs the crew: five Claude Code agents, `producer`, `director`, `editor`,
 `reviewer` and `builder`. The room is reachable from Telegram (`@launch_room_bot`) and Slack (the
