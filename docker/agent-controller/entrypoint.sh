@@ -12,7 +12,7 @@ if [ "$(id -u)" = 0 ]; then
     if ! mountpoint -q "$CONTROLLER_DATA"; then
       echo "agent-controller: no volume is mounted at $CONTROLLER_DATA; its data is lost when the container is replaced" >&2
     fi
-    for pair in .local/state:state .switch:switch .claude:claude .codex:codex sites:sites public:public videos:videos; do
+    for pair in .local/state:state .switch:switch .claude:claude sites:sites public:public videos:videos; do
       home_path="/home/node/${pair%%:*}"
       data_path="$CONTROLLER_DATA/${pair#*:}"
       mkdir -p "$data_path"
@@ -66,13 +66,7 @@ for name in SITE_TEMPLATES SITES_DOMAIN FORMSPREE_PROJECT_ID FORMSPREE_DEPLOY_KE
   [ -n "$value" ] && printf '%s=%s\n' "$name" "$value" >> "$SETTINGS"
 done
 
-# Codex counts as signed in only with a stored login (~/.codex, in its volume), so an API key
-# is saved there; without one, sign in once with ChatGPT (codex login --device-auth).
-if [ -n "${OPENAI_API_KEY:-}" ]; then
-  printenv OPENAI_API_KEY | codex login --with-api-key >/dev/null
-fi
-
-# The launch-room roles (cmd/roles): Claude Code builds the sites and Codex reviews them.
+# The launch-room roles (cmd/roles): every agent is Claude Code, its role picked by its name.
 roles install >/dev/null
 
 exec switch-agent-controller run --env-file "$ENV_FILE"

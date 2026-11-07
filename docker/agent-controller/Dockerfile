@@ -1,4 +1,4 @@
-# Switch's headless agent controller (switch-agent-controller) with the Claude Code and Codex CLIs,
+# Switch's headless agent controller (switch-agent-controller) with the Claude Code CLI,
 # so the agents Switch places on this machine run in the stack instead of in Switch Console.
 # Build context: the repo root (see docker-compose.yml), for the Go commands in cmd/.
 
@@ -31,7 +31,7 @@ RUN arch="$(dpkg --print-architecture)" \
 
 RUN npm install --global --ignore-scripts \
         "https://github.com/sandbox-quantum/switch/releases/download/switch-agent-controller-v${CONTROLLER_VERSION}/switch-agent-controller-${CONTROLLER_VERSION}.tgz" \
-    && npm install --global @anthropic-ai/claude-code @openai/codex @formspree/cli \
+    && npm install --global @anthropic-ai/claude-code @formspree/cli \
     && npm cache clean --force
 
 # Caddy serves the published sites on :8080 from this container, which alone holds them: a volume
@@ -44,7 +44,7 @@ COPY --from=commands /out/site /out/form /out/video /out/transcribe /out/gate /o
 
 USER node
 WORKDIR /home/node
-RUN mkdir -p .local/state .switch .claude .codex sites videos public/preview public/live
+RUN mkdir -p .local/state .switch .claude sites videos public/preview public/live
 # The templates new sites start from; docker-compose.yml mounts the repo's copy over them.
 COPY --chown=node:node templates /home/node/templates
 

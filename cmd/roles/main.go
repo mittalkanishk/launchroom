@@ -1,12 +1,12 @@
-// Command roles gives the launch-room agents their roles: `roles install` writes the builder prompt
-// for Claude Code and the reviewer prompt for Codex into the home folder ($HOME).
+// Command roles gives the launch-room agents their roles: `roles install` writes every role's prompt,
+// and the approval gate's settings, into Claude Code's home in the home folder ($HOME).
 //
 // Read in this order:
 //
 //	main.go                       which concrete type fills each need (newApp)
 //	internal/rolescmd             the install subcommand
 //	../../internal/roles          which prompt goes to which agent, and where
-//	../../internal/prompts        the prompts themselves (builder.md, reviewer.md)
+//	../../internal/prompts        the prompts themselves (team.md, builder.md, reviewer.md, ...)
 package main
 
 import (
@@ -19,7 +19,7 @@ import (
 	"github.com/mittalkanishk/launch-room/internal/roles"
 )
 
-const usage = `usage: roles install   write the builder and reviewer prompts into Claude Code's and Codex's homes
+const usage = `usage: roles install   write the agents' role prompts and gate settings into Claude Code's home
 `
 
 func main() {
