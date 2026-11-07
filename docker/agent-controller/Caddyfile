@@ -1,0 +1,26 @@
+# Serves the sites the agents publish, picked by hostname: preview-<name>.<domain> from the
+# preview build, <name>.<domain> from the live one. Plain HTTP; the Cloudflare tunnel (locally) or
+# Railway's edge adds HTTPS. A path is tried as a file, then as a page of a multi-page site
+# (/blog/post → blog/post/index.html or blog/post.html), then falls back to index.html for
+# single-page apps that route in the browser. The entrypoint runs it as node, beside the controller.
+{
+	auto_https off
+	admin off
+}
+
+:8080 {
+	@preview header_regexp site Host ^preview-([a-z0-9-]+)\.
+	handle @preview {
+		root * /home/node/public/preview/{re.site.1}
+		header Cache-Control "no-cache"
+		try_files {path} {path}/index.html {path}.html /index.html
+		file_server
+	}
+
+	@live header_regexp site Host ^([a-z0-9-]+)\.
+	handle @live {
+		root * /home/node/public/live/{re.site.1}
+		try_files {path} {path}/index.html {path}.html /index.html
+		file_server
+	}
+}

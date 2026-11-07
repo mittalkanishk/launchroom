@@ -52,7 +52,7 @@ Docker, [mise](https://mise.jdx.dev), a Cloudflare domain with a tunnel, a Teleg
 subscription or API key, and an OpenAI key for Codex. Then:
 
 1. `mise run switch:init-env`, fill in `.env` (`.env.example` explains every value).
-2. Route `switch.<domain>` → `http://switch:8000` and `*.<domain>` → `http://workflows:80` in the tunnel.
+2. Route `switch.<domain>` → `http://switch:8000` and `*.<domain>` → `http://agent-controller:8080` in the tunnel.
 3. `mise run switch:up`, sign in, connect your Telegram group under **Apps**.
 4. **Machines → Add machine**, put the code in `.env` as `SWITCH_CONTROLLER_ENROLL_CODE`, `mise run switch:up` again.
 5. Create the managed agents on that machine, named `producer`, `director`, `editor`, `reviewer`
