@@ -9,3 +9,7 @@ file = ".mise/scripts/switch-up.sh"
 [tasks."switch:down"]
 description = "Stop the Switch stack (keeps the database volume)"
 file = ".mise/scripts/switch-down.sh"
+
+[tasks."git-tag-release"]
+description = "Tag a release (vX.Y.Z) and push it, which runs the Release workflow and then the Railway deploy"
+file = ".mise/scripts/git-tag-release.sh"

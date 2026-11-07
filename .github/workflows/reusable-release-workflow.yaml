@@ -1,0 +1,27 @@
+name: "Reusable Launchroom Release Template"
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+
+jobs:
+  release-services:
+    uses: ./.github/workflows/reusable-release-image-workflow.yaml
+    secrets: inherit
+    strategy:
+      fail-fast: false  # Continue building other services if one fails
+      matrix:
+        # One image per service built in docker/docker-compose.yml, from docker/<service>/Dockerfile.
+        # Image tag `${IMAGE_REPO}:<service>-${VERSION}`. Postgres, switch, gateway and caddy run
+        # upstream images and aren't built here.
+        service:
+          - agent-controller
+          - studio
+          - stage
+          - renderer
+    with:
+      service: ${{ matrix.service }}
+      version: ${{ inputs.version }}
