@@ -6,7 +6,6 @@ if [ -f .env ]; then echo ".env already exists; delete it to regenerate" >&2; ex
 secret() { openssl rand -hex 24; }
 
 cat > .env <<EOF
-SWITCH_VERSION=0.31.0
 DB_NAME=switch
 DB_OWNER_USER=postgres
 DB_OWNER_PASSWORD=$(secret)

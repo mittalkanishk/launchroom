@@ -34,12 +34,25 @@ RUN npm install --global --ignore-scripts \
     && npm install --global @anthropic-ai/claude-code @openai/codex @formspree/cli \
     && npm cache clean --force
 
+# Caddy serves the published sites on :8080 from this container, which alone holds them: a volume
+# belongs to one service on Railway. The entrypoint starts it beside the controller.
+COPY --from=caddy:2-alpine /usr/bin/caddy /usr/local/bin/caddy
+COPY docker/agent-controller/Caddyfile /etc/caddy/Caddyfile
+
 COPY docker/agent-controller/entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY --from=commands /out/site /out/form /out/video /out/transcribe /out/gate /out/roles /usr/local/bin/
 
-# The controller and every agent it starts run as this unprivileged user.
 USER node
 WORKDIR /home/node
 RUN mkdir -p .local/state .switch .claude .codex sites videos public/preview public/live
+# The templates new sites start from; docker-compose.yml mounts the repo's copy over them.
+COPY --chown=node:node templates /home/node/templates
 
+# The one volume, mounted here locally and on Railway; the entrypoint keeps everything in it.
+ENV CONTROLLER_DATA=/data
+EXPOSE 8080
+
+# The entrypoint starts as root only to prepare the data volume, then runs the controller and every
+# agent it starts as the unprivileged node user.
+USER root
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

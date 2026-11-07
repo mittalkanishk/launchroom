@@ -1,10 +1,14 @@
-# Switch (github.com/sandbox-quantum/switch) from its official GHCR images, trimmed from its
-# deploy/local/standalone-docker-compose.yml: Postgres, switch-core (API :18000), the gateway
-# dashboard (:13000), a Cloudflare tunnel for chat webhooks, an agent controller that runs
-# Claude Code and Codex agents, a server for the sites they publish, and the video crew's back end
-# (studio, and the renderer it sends scenes to). Every value comes from the root .env, written by
-# `mise run switch:init-env`.
-name: launch-room
+# Switch (github.com/sandbox-quantum/switch), trimmed from its deploy/local/standalone-docker-compose.yml:
+# Postgres, switch-core (API :18000), the gateway dashboard (:13000), a Cloudflare tunnel for chat
+# webhooks, an agent controller that runs Claude Code and Codex agents and serves the sites they
+# publish, and the video crew's back end (studio, and the renderers it sends scenes to). Every value
+# comes from the root .env, written by `mise run switch:init-env`.
+#
+# The same images and layout as on Railway (.github/workflows/deploy-railway.yaml): every service
+# but Postgres and the tunnel is built from its docker/<service>/Dockerfile, which the release
+# publishes, and a service keeps its data in one volume at /data. Only addresses and secrets differ,
+# and they come from the environment.
+name: launchroom
 
 services:
   postgres:
@@ -28,7 +32,10 @@ services:
       retries: 10
 
   switch:
-    image: ghcr.io/sandbox-quantum/switch-core:${SWITCH_VERSION:?set it in .env}
+    build:
+      context: ..
+      dockerfile: docker/switch/Dockerfile
+    image: launchroom-switch:dev
     ports:
       - "127.0.0.1:${API_HOST_PORT:-18000}:8000"
     environment:
@@ -72,14 +79,20 @@ services:
         condition: service_healthy
 
   gateway:
-    image: ghcr.io/sandbox-quantum/gateway:${SWITCH_VERSION:?set it in .env}
+    build:
+      context: ..
+      dockerfile: docker/gateway/Dockerfile
+    image: launchroom-gateway:dev
     ports:
       - "127.0.0.1:${GATEWAY_HOST_PORT:-13000}:3000"
+    environment:
+      SWITCH_UPSTREAM: switch:8000
     depends_on:
       - switch
 
   # Cloudflare tunnel created in the dashboard (Zero Trust > Networks > Tunnels). Point its public
-  # hostname at http://switch:8000 and set that hostname as MESSAGING_PUBLIC_URL.
+  # hostname at http://switch:8000 and set that hostname as MESSAGING_PUBLIC_URL, and route the sites'
+  # wildcard *.<domain> to http://agent-controller:8080. Railway's edge does this there.
   cloudflared:
     image: cloudflare/cloudflared:latest
     command: tunnel --no-autoupdate run
@@ -89,14 +102,15 @@ services:
     depends_on:
       - switch
 
-  # Runs the agents Switch places on this machine (Claude Code, Codex), in place of Switch Console. It
+  # Runs the agents Switch places on this machine (Claude Code, Codex), in place of Switch Console,
+  # and serves the sites they publish on :8080: preview-<name>.<domain> and <name>.<domain>. It
   # enrolls once with SWITCH_CONTROLLER_ENROLL_CODE and must reach Switch over https, so it goes
   # through the tunnel's public URL.
   agent-controller:
     build:
       context: ..
       dockerfile: docker/agent-controller/Dockerfile
-    image: launch-room-agent-controller:0.31.0
+    image: launchroom-agent-controller:dev
     environment:
       SWITCH_SERVER_URL: ${MESSAGING_PUBLIC_URL:?set it in .env}
       SWITCH_CONTROLLER_ENROLL_CODE: ${SWITCH_CONTROLLER_ENROLL_CODE:-}
@@ -114,30 +128,14 @@ services:
       # The video crew's back end, reached by the agents' `video` command.
       STUDIO_URL: http://studio:8090
     volumes:
+      # The repo's templates over the image's copy, so edits show without a rebuild.
       - ../templates:/home/node/templates:ro
-      - controller-state:/home/node/.local/state
-      - agent-workspaces:/home/node/.switch
-      - claude-home:/home/node/.claude
-      - codex-home:/home/node/.codex
-      - site-sources:/home/node/sites
-      - sites-public:/home/node/public
-      - video-projects:/home/node/videos
+      # Everything it keeps (enrollment, logins, sites, videos, published pages), as on Railway.
+      - controller-data:/data
     restart: on-failure
     depends_on:
       - switch
       - cloudflared
-
-  # Serves the sites the agents publish: preview-<name>.<domain> and <name>.<domain>. Route the
-  # tunnel's wildcard hostname *.<domain> to http://workflows:80.
-  workflows:
-    image: caddy:2-alpine
-    volumes:
-      - ./workflows/Caddyfile:/etc/caddy/Caddyfile:ro
-      - sites-public:/srv/sites:ro
-    restart: unless-stopped
-    # Started after the controller, so the controller creates sites-public owned by its own user.
-    depends_on:
-      - agent-controller
 
   # The video crew's back end (cmd/studio): it has the explainer scenes rendered by their engine
   # (stage for .js scenes, renderer for .py ones), joins them with their subtitles, grades and mixes the cut, and measures it. Only the agents'
@@ -146,7 +144,7 @@ services:
     build:
       context: ..
       dockerfile: docker/studio/Dockerfile
-    image: launch-room-studio:dev
+    image: launchroom-studio:dev
     environment:
       RENDERER_URL: http://renderer:8091
       STAGE_URL: http://stage:8092
@@ -164,7 +162,7 @@ services:
     build:
       context: ..
       dockerfile: docker/stage/Dockerfile
-    image: launch-room-stage:dev
+    image: launchroom-stage:dev
     environment:
       LAUNCHROOM_VOICE: ${EXPLAINER_VOICE:-en-US-AndrewNeural}
     read_only: true
@@ -185,7 +183,7 @@ services:
     build:
       context: ..
       dockerfile: docker/renderer/Dockerfile
-    image: launch-room-renderer:dev
+    image: launchroom-renderer:dev
     environment:
       LAUNCHROOM_VOICE: ${EXPLAINER_VOICE:-en-US-AndrewNeural}
     read_only: true
@@ -200,11 +198,5 @@ services:
 
 volumes:
   pgdata:
-  controller-state:
-  agent-workspaces:
-  claude-home:
-  codex-home:
-  site-sources:
-  sites-public:
-  video-projects:
+  controller-data:
   studio-data:

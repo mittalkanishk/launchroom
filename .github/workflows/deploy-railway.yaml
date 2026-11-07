@@ -24,6 +24,16 @@ name: Deploy to Railway
 #   RAILWAY_GATEWAY_SERVICE_ID           Optional; Railway service id for gateway (Switch's dashboard).
 #   If the image repo is private, give Railway the Docker Hub credentials under each
 #   service's Settings → Source.
+#
+# Railway service setup (once, in the dashboard). The images and their /data volumes are the ones
+# docker/docker-compose.yml runs locally; only the addresses differ:
+#   agent-controller  one volume at /data; SWITCH_SERVER_URL (switch's public URL) and
+#                     STUDIO_URL=http://<studio service>.railway.internal:8090; the *.<domain>
+#                     wildcard domain → port 8080, where it serves the published sites.
+#   studio            one volume at /data; RENDERER_URL and STAGE_URL, the renderer and stage
+#                     services' http://<name>.railway.internal:8091 and :8092.
+#   switch, gateway   public domains on 8000 and 3000. gateway finds switch at its default
+#                     SWITCH_UPSTREAM, switch.railway.internal:8000.
 
 on:
   workflow_run:

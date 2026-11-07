@@ -3,6 +3,36 @@
 # in the foreground. The enrollment is kept in the data volume, so later starts skip it.
 set -eu
 
+# The image starts as root only for this part, then runs the rest of this script as node.
+if [ "$(id -u)" = 0 ]; then
+  # One volume holds everything (a Railway service gets only one, mounted root-owned): the
+  # enrollment, the logins, the sites and videos and the published pages. Each folder is kept in it
+  # and linked from its usual place, so the controller and the commands find them unchanged.
+  if [ -n "${CONTROLLER_DATA:-}" ]; then
+    if ! mountpoint -q "$CONTROLLER_DATA"; then
+      echo "agent-controller: no volume is mounted at $CONTROLLER_DATA; its data is lost when the container is replaced" >&2
+    fi
+    for pair in .local/state:state .switch:switch .claude:claude .codex:codex sites:sites public:public videos:videos; do
+      home_path="/home/node/${pair%%:*}"
+      data_path="$CONTROLLER_DATA/${pair#*:}"
+      mkdir -p "$data_path"
+      chown node:node "$data_path"
+      if mountpoint -q "$home_path"; then
+        echo "agent-controller: $home_path is a volume of its own; leaving it, not linking it to $data_path" >&2
+      elif [ ! -L "$home_path" ]; then
+        rm -rf "$home_path"
+        ln -s "$data_path" "$home_path"
+      fi
+    done
+    mkdir -p "$CONTROLLER_DATA/public/preview" "$CONTROLLER_DATA/public/live"
+    chown node:node "$CONTROLLER_DATA" "$CONTROLLER_DATA/public/preview" "$CONTROLLER_DATA/public/live"
+  fi
+  exec setpriv --reuid=node --regid=node --init-groups env HOME=/home/node USER=node "$0" "$@"
+fi
+
+# Serves the published sites, preview-<name>.<domain> and <name>.<domain>, on :8080.
+caddy run --config /etc/caddy/Caddyfile --adapter caddyfile &
+
 ENV_FILE="$HOME/.local/state/agents.env"
 
 if ! switch-agent-controller status >/dev/null 2>&1; then
