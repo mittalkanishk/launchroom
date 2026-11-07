@@ -1,7 +1,8 @@
 name: Deploy to Railway
 
 # Runs directly off the `Release` workflow (which builds & pushes `agent-controller-<VERSION>`,
-# `studio-<VERSION>`, `stage-<VERSION>` and `renderer-<VERSION>` images) or via manual
+# `studio-<VERSION>`, `stage-<VERSION>`, `renderer-<VERSION>`, `switch-<VERSION>` and
+# `gateway-<VERSION>` images) or via manual
 # `workflow_dispatch` for re-deploys.
 #
 # Pipeline (per run):
@@ -19,6 +20,8 @@ name: Deploy to Railway
 #   RAILWAY_STUDIO_SERVICE_ID            Optional; Railway service id for studio.
 #   RAILWAY_STAGE_SERVICE_ID             Optional; Railway service id for stage.
 #   RAILWAY_RENDERER_SERVICE_ID          Optional; Railway service id for renderer.
+#   RAILWAY_SWITCH_SERVICE_ID            Optional; Railway service id for switch (Switch's API).
+#   RAILWAY_GATEWAY_SERVICE_ID           Optional; Railway service id for gateway (Switch's dashboard).
 #   If the image repo is private, give Railway the Docker Hub credentials under each
 #   service's Settings → Source.
 
@@ -79,6 +82,10 @@ jobs:
             service_id_secret: RAILWAY_STAGE_SERVICE_ID
           - service: renderer
             service_id_secret: RAILWAY_RENDERER_SERVICE_ID
+          - service: switch
+            service_id_secret: RAILWAY_SWITCH_SERVICE_ID
+          - service: gateway
+            service_id_secret: RAILWAY_GATEWAY_SERVICE_ID
     env:
       RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
       RAILWAY_PROJECT_TOKEN: ${{ secrets.RAILWAY_PROJECT_TOKEN }}
