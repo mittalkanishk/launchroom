@@ -1,8 +1,7 @@
-// Package roles gives each agent its launch-room role, by writing the role's prompt where that agent
-// reads its standing instructions: Claude Code reads ~/.claude/CLAUDE.md, Codex reads
-// ~/.codex/AGENTS.md. Claude Code also gets the settings that run the approval gate (cmd/gate) before
-// every shell command. Both homes are volumes, so the files are written on every start rather than
-// baked into the image.
+// Package roles gives each agent its launch-room role, by writing the roles' prompts where Claude Code
+// reads its standing instructions, ~/.claude/CLAUDE.md, with the settings that run the approval gate
+// (cmd/gate) before every shell command. The home is in the data volume, so the files are written on
+// every start rather than baked into the image.
 package roles
 
 import (
@@ -26,11 +25,10 @@ type File struct {
 	Content string
 }
 
-// All is every file the roles need: Claude Code builds the sites behind the gate, Codex reviews them.
+// All is every file the roles need: every agent is Claude Code, working behind the gate.
 var All = []File{
-	{Agent: "Claude Code (builder, producer, director, editor)", Path: filepath.Join(".claude", "CLAUDE.md"), Content: prompts.Claude},
+	{Agent: "Claude Code (builder, producer, director, editor, reviewer)", Path: filepath.Join(".claude", "CLAUDE.md"), Content: prompts.Claude},
 	{Agent: "Claude Code (approval gate)", Path: filepath.Join(".claude", "settings.json"), Content: claudeSettings},
-	{Agent: "Codex (reviewer)", Path: filepath.Join(".codex", "AGENTS.md"), Content: prompts.Reviewer},
 }
 
 // Installer writes the roles into one home folder.

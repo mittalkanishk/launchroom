@@ -1,6 +1,6 @@
 // Package transcribe turns a voice note into text with OpenAI's transcription API, so the agents can
 // act on what people say in the room. Chat apps hand the agents a voice note as an audio file
-// (Telegram's is voice.ogg), which neither Claude Code nor Codex can listen to.
+// (Telegram's is voice.ogg), which Claude Code can't listen to.
 package transcribe
 
 import (

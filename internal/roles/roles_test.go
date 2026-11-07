@@ -25,7 +25,6 @@ func TestInstallWritesEachFile(t *testing.T) {
 
 	headings := map[string]string{
 		filepath.Join(home, ".claude", "CLAUDE.md"): "# Launch room",
-		filepath.Join(home, ".codex", "AGENTS.md"):  "# Launch room: reviewer",
 	}
 	for path, heading := range headings {
 		content, err := os.ReadFile(path)
@@ -39,7 +38,7 @@ func TestInstallWritesEachFile(t *testing.T) {
 
 	// Every Claude agent's role is in the shared file.
 	claude, _ := os.ReadFile(filepath.Join(home, ".claude", "CLAUDE.md"))
-	for _, role := range []string{"If you are `builder`", "If you are `producer`", "If you are `director`", "If you are `editor`"} {
+	for _, role := range []string{"If you are `builder`", "If you are `producer`", "If you are `director`", "If you are `editor`", "If you are `reviewer`"} {
 		if !strings.Contains(string(claude), role) {
 			t.Errorf("CLAUDE.md has no section %q", role)
 		}

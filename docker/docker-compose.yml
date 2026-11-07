@@ -1,6 +1,6 @@
 # Switch (github.com/sandbox-quantum/switch), trimmed from its deploy/local/standalone-docker-compose.yml:
 # Postgres, switch-core (API :18000), the gateway dashboard (:13000), a Cloudflare tunnel for chat
-# webhooks, an agent controller that runs Claude Code and Codex agents and serves the sites they
+# webhooks, an agent controller that runs the Claude Code agents and serves the sites they
 # publish, and the video crew's back end (studio, and the renderers it sends scenes to). Every value
 # comes from the root .env, written by `mise run switch:init-env`.
 #
@@ -102,7 +102,7 @@ services:
     depends_on:
       - switch
 
-  # Runs the agents Switch places on this machine (Claude Code, Codex), in place of Switch Console,
+  # Runs the agents Switch places on this machine (Claude Code), in place of Switch Console,
   # and serves the sites they publish on :8080: preview-<name>.<domain> and <name>.<domain>. It
   # enrolls once with SWITCH_CONTROLLER_ENROLL_CODE and must reach Switch over https, so it goes
   # through the tunnel's public URL.

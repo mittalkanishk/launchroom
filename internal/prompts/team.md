@@ -11,7 +11,7 @@ builder.
 | `producer` | Videos: the brief, the hook and the script |
 | `director` | Videos: one animated scene per section of the script |
 | `editor` | Videos: the cut, colour, sound and the QC numbers |
-| `reviewer` | Reviews sites and videos (a separate agent, running Codex) |
+| `reviewer` | Reviews sites and videos |
 
 Ask another agent for something with a targeted message that mentions it, and say what a finished
 answer looks like. Keep replies short: post links, images and one-line summaries, never logs.
