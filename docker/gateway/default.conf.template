@@ -1,0 +1,31 @@
+# The upstream image's /etc/nginx/conf.d/default.conf, with one change for Railway: nginx resolves
+# a literal proxy_pass host once, at startup, and a redeploy of switch gives it a new private IP, so
+# every /gateway request then timed out. Proxying through a variable makes nginx look switch up again
+# (every 10s) through the container's resolver, which the image's 15-local-resolvers.envsh reads from
+# /etc/resolv.conf. IPv4 only, as switch listens on 0.0.0.0.
+server {
+    listen 3000;
+
+    resolver ${NGINX_LOCAL_RESOLVERS} valid=10s ipv6=off;
+    set $switch_upstream http://switch.railway.internal:8000;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    location = /gateway/provider-connections/github/callback {
+        access_log off;
+        proxy_pass $switch_upstream;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /gateway {
+        proxy_pass $switch_upstream;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
